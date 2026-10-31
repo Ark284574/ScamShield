@@ -62,6 +62,17 @@ For a one-laptop demo, leave `OLLAMA_BASE_URL` unset; it defaults to `http://127
 - Scam catalogue and Indian cyber-help pages
 - Large-text and high-contrast accessibility options
 
+## Testing accuracy
+
+29 fictional test messages (scams, normal messages and unclear ones) live in `tests/test_messages.json`. With Ollama running:
+
+```powershell
+.\.venv\Scripts\python.exe run_tests.py
+.\.venv\Scripts\python.exe run_tests.py --ids S02 L01   # only some messages
+```
+
+It prints PASS/FAIL per message, counts missed scams and false alarms, and saves results to `tests/results/`.
+
 ## Files
 
 - `app.py` — polished Streamlit interface, scanner, catalogue, and official resources

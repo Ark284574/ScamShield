@@ -4,213 +4,248 @@ import html
 import json
 
 import streamlit as st
-from analyzer import analyze_message, check_ollama, MODEL, OLLAMA_BASE_URL, ScamShieldError
 
-st.set_page_config(
-    page_title="ScamShield AI | Message Safety",
-    page_icon="🛡️",
-    layout="wide",
-    initial_sidebar_state="expanded",
-)
+from analyzer import MODEL, OLLAMA_BASE_URL, ScamShieldError, analyze_message, check_ollama
 
-st.markdown("""
-<style>
-@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap');
-html, body, [class*="css"] { font-family: 'DM Sans', sans-serif; }
-.stApp { background: #0b1220; color: #e8eef8; }
-[data-testid="stSidebar"] { background: #101a2c; border-right: 1px solid #25334a; }
-.block-container { padding-top: 2rem; max-width: 1240px; }
-h1, h2, h3 { font-family: 'Space Grotesk', sans-serif !important; color: #f4f7fb; }
-.hero { padding: 1.5rem 1.7rem; border: 1px solid #263954; border-radius: 18px;
-        background: linear-gradient(120deg, #14243b 0%, #101a2c 70%); margin-bottom: 1.2rem; }
-.eyebrow { color: #61d7c4; font-weight: 700; letter-spacing: .13em; font-size: .75rem; }
-.subtle { color: #a8b7cb; }
-.panel { background: #111e31; border: 1px solid #293b55; border-radius: 14px; padding: 1rem 1.15rem; margin: .5rem 0 1rem; }
-.quote { border-left: 3px solid #f2b84b; padding: .55rem .8rem; background: #1a2638; border-radius: 0 8px 8px 0; margin: .45rem 0; color: #f7e7c1; }
-.small { color: #9eb0c7; font-size: .85rem; }
-.gauge { border-radius: 14px; padding: 1.1rem 1.3rem; text-align: center; margin-bottom: .8rem; border: 2px solid; }
-.gauge h2 { margin: 0; }
-.gauge-Low { background: #0d2e24; border-color: #10b981; color: #a7f3d0; }
-.gauge-Moderate { background: #3a2a08; border-color: #f59e0b; color: #fde68a; }
-.gauge-High { background: #3d1f0a; border-color: #f97316; color: #fdba74; }
-.gauge-Critical { background: #3d0f0f; border-color: #ef4444; color: #fca5a5; }
-.gauge-Unclear { background: #1f2937; border-color: #9ca3af; color: #d1d5db; }
-div.stButton > button[kind="primary"] { background: #18a895; border: 0; color: #061b1a; font-weight: 700; border-radius: 9px; }
-div.stButton > button[kind="primary"]:hover { background: #42c8b5; }
-[data-testid="stMetric"] { background: #111e31; border: 1px solid #293b55; padding: 1rem; border-radius: 12px; }
-hr { border-color: #293b55; }
-</style>
-""", unsafe_allow_html=True)
+st.set_page_config(page_title="ScamShield", page_icon="🛡️", layout="centered", initial_sidebar_state="collapsed")
+
+
+def esc(text: str) -> str:
+    """Escape text for safe use inside HTML (and stop Streamlit treating $ as maths)."""
+    return html.escape(str(text)).replace("$", "&#36;")
+
 
 @st.cache_data(ttl=30)
 def cached_health():
     return check_ollama()
 
 
-with st.sidebar:
-    st.markdown("## 🛡️ ScamShield AI")
-    st.caption("Detect. Understand. Stay Safe.")
-    st.divider()
-    page = st.radio("WORKSPACE", ["Message scanner", "Scam catalogue", "India cyber help"], label_visibility="collapsed")
-    st.divider()
-    st.markdown("**AI engine**")
-    st.code(f"{MODEL}\nOllama local API", language="text")
-    st.caption(f"Endpoint: {OLLAMA_BASE_URL}")
-    ok, health = cached_health()
-    st.markdown(("🟢 " if ok else "🟠 ") + health)
-    st.divider()
-    st.markdown("**Accessibility**")
-    large_text = st.checkbox("Large text")
-    high_contrast = st.checkbox("High contrast")
-    st.divider()
-    st.caption("Privacy note: message text is sent to the configured Ollama server for analysis. Do not submit passwords, OTPs, or unnecessary personal information.")
+# ---------- Settings (top right) ----------
+top_left, top_right = st.columns([5, 1.4])
+with top_left:
+    st.markdown('<div class="wordmark">ScamShield</div>', unsafe_allow_html=True)
+with top_right:
+    with st.popover("Settings", use_container_width=True):
+        large_text = st.checkbox("Larger text")
+        high_contrast = st.checkbox("High contrast")
+        ok, health = cached_health()
+        st.caption(("Ready: " if ok else "Not ready: ") + health)
+        st.caption(f"Model {MODEL} at {OLLAMA_BASE_URL}")
 
-if large_text:
-    st.markdown("<style>.stApp p, .stApp li, .stApp label, .panel, .quote { font-size: 1.2rem !important; }</style>", unsafe_allow_html=True)
-if high_contrast:
-    st.markdown("<style>.panel, .quote, .hero, [data-testid='stMetric'], textarea, .gauge { border: 2px solid #ffffff !important; } .subtle, .small { color: #ffffff !important; }</style>", unsafe_allow_html=True)
+INK, MUTED, LINE = ("#000000", "#000000", "#000000") if high_contrast else ("#17231D", "#4F5F56", "#CBD6CD")
 
-st.markdown("""
-<div class="hero">
-  <div class="eyebrow">AI-POWERED MESSAGE SAFETY</div>
-  <h1 style="font-size:2.55rem;margin:.25rem 0;">ScamShield <span style="color:#55d6c2;">AI</span></h1>
-  <div class="subtle">Understand suspicious messages before you act. Clear evidence, cautious assessments, safer next steps.</div>
-</div>
-""", unsafe_allow_html=True)
+st.markdown(f"""<style>
+@import url('https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:ital,wght@0,400;0,700;1,400&family=Bricolage+Grotesque:wght@600;700;800&display=swap');
+:root {{ --ink:{INK}; --muted:{MUTED}; --line:{LINE}; --paper:#FFFFFF; --bg:#F2F5F1; --mark:#FFE066; }}
+html {{ font-size: {'120%' if large_text else '100%'}; }}
+html, body, .stApp, [class*="css"] {{ font-family: 'Atkinson Hyperlegible', 'Segoe UI', sans-serif; color: var(--ink); }}
+.stApp {{ background: var(--bg); }}
+header[data-testid="stHeader"] {{ background: transparent; }}
+.block-container {{ max-width: 780px; padding-top: 2rem; padding-bottom: 4rem; }}
+.wordmark, h1, h2, h3 {{ font-family: 'Bricolage Grotesque', 'Segoe UI', sans-serif !important; letter-spacing: -0.01em; color: var(--ink); }}
+.wordmark {{ font-size: 1.5rem; font-weight: 800; padding-top: .35rem; }}
+h1 {{ font-size: 2.3rem !important; line-height: 1.12 !important; font-weight: 800 !important; }}
+h2, h3 {{ font-weight: 700 !important; }}
+.lede {{ color: var(--muted); font-size: 1.1rem; line-height: 1.55; margin: -.3rem 0 1.2rem; max-width: 34rem; }}
+textarea {{ font-size: 1.08rem !important; line-height: 1.6 !important; border: 2px solid var(--ink) !important; border-radius: 10px !important; background: var(--paper) !important; }}
+button[kind="primary"], button[data-testid="stBaseButton-primary"] {{ background: var(--ink) !important; color: #fff !important; border: 0 !important; border-radius: 10px !important; font-weight: 700 !important; font-size: 1.08rem !important; padding: .65rem 1.2rem !important; }}
+button[kind="secondary"], button[data-testid="stBaseButton-secondary"] {{ border: 1.5px solid var(--line) !important; border-radius: 999px !important; background: transparent !important; color: var(--ink) !important; font-size: .95rem !important; }}
+.small-note {{ color: var(--muted); font-size: .95rem; margin-top: .5rem; }}
+.verdict {{ border-radius: 14px; padding: 1.3rem 1.4rem; margin: 1.6rem 0 1.4rem; border-left: 10px solid; }}
+.verdict h2 {{ margin: 0 0 .35rem; font-size: 1.7rem; }}
+.verdict p {{ margin: 0; font-size: 1.1rem; line-height: 1.55; }}
+.verdict .meta {{ margin-top: .7rem; font-size: .9rem; opacity: .85; }}
+.v-Low {{ background:#E2F1E8; border-color:#2E7D5B; }}
+.v-Moderate {{ background:#FFF1CF; border-color:#B7791F; }}
+.v-High {{ background:#FFE6D8; border-color:#C2410C; }}
+.v-Critical {{ background:#FCE1DD; border-color:#B42318; }}
+.v-Unclear {{ background:#E7ECE8; border-color:#6B7A71; }}
+.section {{ margin-top: 2rem; }}
+.section h3 {{ margin: 0 0 .6rem; font-size: 1.3rem; }}
+.msgbox {{ background: var(--paper); border: 1.5px solid var(--line); border-radius: 10px; padding: 1.1rem 1.2rem; font-size: 1.08rem; line-height: 1.85; }}
+.msgbox mark {{ background: var(--mark); color: var(--ink); padding: .08em .25em; border-radius: 4px; }}
+.msgbox sup {{ font-weight: 700; font-size: .7em; margin-left: .15em; }}
+.why {{ display: flex; gap: .8rem; padding: .85rem 0; border-top: 1px solid var(--line); }}
+.why:first-of-type {{ border-top: 0; }}
+.badge {{ flex: 0 0 1.7rem; height: 1.7rem; border-radius: 50%; background: var(--mark); border: 1.5px solid var(--ink); font-weight: 700; font-size: .9rem; display: flex; align-items: center; justify-content: center; }}
+.badge.none {{ background: transparent; border-style: dashed; }}
+.why b {{ display: block; margin-bottom: .15rem; }}
+.why span {{ color: var(--ink); line-height: 1.55; }}
+.why i {{ color: var(--muted); font-size: .92rem; display: block; margin-top: .2rem; }}
+.todo {{ list-style: none; padding: 0; margin: 0; }}
+.todo li {{ display: flex; gap: .7rem; padding: .5rem 0; line-height: 1.5; font-size: 1.05rem; }}
+.todo li::before {{ content: ""; flex: 0 0 1.05rem; height: 1.05rem; margin-top: .25rem; border: 2px solid var(--ink); border-radius: 4px; }}
+.help {{ background: var(--ink); color: #fff; border-radius: 14px; padding: 1.2rem 1.4rem; margin-top: 2rem; }}
+.help b {{ font-size: 1.25rem; font-family: 'Bricolage Grotesque', sans-serif; }}
+.help p {{ margin: .4rem 0 0; line-height: 1.55; }}
+.help a {{ color: var(--mark); }}
+.unsure {{ color: var(--muted); line-height: 1.6; }}
+.unsure li {{ margin-bottom: .3rem; }}
+.fine {{ color: var(--muted); font-size: .9rem; line-height: 1.55; margin-top: 3rem; border-top: 1px solid var(--line); padding-top: 1rem; }}
+</style>""", unsafe_allow_html=True)
 
-if page == "Message scanner":
-    left, right = st.columns([1.35, .65], gap="large")
-    with left:
-        st.subheader("Message scanner")
-        st.markdown('<p class="subtle">Paste an SMS, WhatsApp message, email, or other text. Gemma reviews the content for potential warning signs.</p>', unsafe_allow_html=True)
-        channel = st.selectbox("Message source (optional)", ["Auto-detect", "SMS", "WhatsApp", "Email", "Social media", "Other"])
-        message = st.text_area("Suspicious message", height=230, max_chars=12000,
-            placeholder="Paste the message here…\n\nExample: Your parcel is on hold. Pay a small fee using this link…")
-        st.caption(f"{len(message)} / 12,000 characters")
-        analyse = st.button("🔍  Analyse message", type="primary", use_container_width=True)
-    with right:
-        st.markdown("### Before you analyse")
-        st.markdown("""
-        <div class="panel">
-        <b>Keep yourself safe</b><br><br>
-        • Never share OTPs, PINs, or passwords.<br>
-        • Avoid opening unexpected links or files.<br>
-        • Verify requests through an official channel you find independently.<br>
-        • Remove personal details before pasting where possible.
-        </div>
-        <div class="panel">
-        <b>What the report includes</b><br><br>
-        Risk category and indicative score<br>
-        Exact text evidence where available<br>
-        Plain-language explanations<br>
-        Safer next steps and uncertainty
-        </div>
-        """, unsafe_allow_html=True)
+EXAMPLES = {
+    "Prize": "Congratulations! You have won a prize. Pay a processing fee immediately to claim it.",
+    "Account alert": "Your account will be suspended today. Send your OTP to verify your identity.",
+    "College notice": "Dear students, the library will remain closed on Sunday due to scheduled maintenance. Regular hours resume on Monday.",
+    "Job offer": "We have an opening for a remote assistant. Please contact us for further details.",
+}
 
-    if analyse:
-        if not message.strip():
-            st.warning("Please paste a message before analysing.")
-        else:
-            with st.spinner("Gemma is reviewing the message locally through Ollama…"):
-                try:
-                    report = analyze_message(message)
-                    if channel != "Auto-detect":
-                        report["message_type"] = channel
-                    st.session_state["last_report"] = report
-                    st.session_state["last_message"] = message
-                except ScamShieldError as exc:
-                    st.error(str(exc))
-                except Exception:
-                    st.error("An unexpected error occurred. Please try again. If it continues, check the terminal for details.")
+HEADLINES = {
+    "Low": ("No clear warning signs", "Nothing in this message stands out as a scam. That does not prove it is safe."),
+    "Moderate": ("Some warning signs", "A few things in this message are worth a second look before you act."),
+    "High": ("Strong warning signs", "This message has several features that scams often use. Do not act on it yet."),
+    "Critical": ("Very strong warning signs", "This looks a lot like a known scam pattern. Do not reply, pay, or share anything."),
+    "Unclear": ("Not enough to judge", "There is too little here to say either way. Check with the sender in a way you trust."),
+}
 
-    report = st.session_state.get("last_report")
-    if report:
-        st.divider()
-        st.subheader("Analysis report")
-        colors = {"Low": "🟢", "Moderate": "🟡", "High": "🟠", "Critical": "🔴", "Unclear": "⚪"}
-        level = report["risk_level"]
+
+def set_example(text: str) -> None:
+    st.session_state["msg"] = text
+
+
+def annotate(message: str, signs: list[dict]) -> str:
+    spans = []
+    for n, sign in enumerate(signs, 1):
+        ev = sign["evidence"]
+        if not ev:
+            continue
+        a = message.find(ev)
+        if a < 0:
+            continue
+        b = a + len(ev)
+        if any(a < y and b > x for x, y, _ in spans):
+            continue
+        spans.append((a, b, n))
+    spans.sort()
+    out, pos = [], 0
+    for a, b, n in spans:
+        out.append(esc(message[pos:a]))
+        out.append(f"<mark>{esc(message[a:b])}<sup>{n}</sup></mark>")
+        pos = b
+    out.append(esc(message[pos:]))
+    return "".join(out).replace("\n", "<br>")
+
+
+def render_report(report: dict, message: str) -> None:
+    level = report["risk_level"]
+    head, line = HEADLINES.get(level, HEADLINES["Unclear"])
+    kind = report["message_type"]
+    kind_text = f" Looks like: {esc(kind)}." if kind not in ("Unknown", "Other") else ""
+    st.markdown(
+        f'<div class="verdict v-{esc(level)}"><h2>{head}</h2><p>{esc(report["summary"]) or line}</p>'
+        f'<div class="meta">Awareness score {report["risk_score"]} out of 100. A guide, not a probability.{kind_text}</div></div>',
+        unsafe_allow_html=True,
+    )
+
+    signs = report["warning_signs"]
+    st.markdown(
+        f'<div class="section"><h3>Your message, marked up</h3><div class="msgbox">{annotate(message, signs)}</div></div>',
+        unsafe_allow_html=True,
+    )
+
+    if signs:
+        rows = []
+        for n, s in enumerate(signs, 1):
+            has_quote = s["evidence"] and s["evidence"] in message
+            badge = f'<div class="badge">{n}</div>' if has_quote else '<div class="badge none">·</div>'
+            note = "" if has_quote else "<i>Applies to the message as a whole.</i>"
+            rows.append(f'<div class="why">{badge}<div><b>{esc(s["title"])}</b><span>{esc(s["explanation"])}</span>{note}</div></div>')
+        st.markdown('<div class="section"><h3>Why it looks suspicious</h3>' + "".join(rows) + "</div>", unsafe_allow_html=True)
+    else:
+        st.markdown('<div class="section"><h3>Why it looks suspicious</h3><p class="unsure">No specific warning signs were found in the text.</p></div>', unsafe_allow_html=True)
+
+    items = "".join(f"<li>{esc(a)}</li>" for a in report["safe_actions"])
+    st.markdown(f'<div class="section"><h3>What to do now</h3><ul class="todo">{items}</ul></div>', unsafe_allow_html=True)
+
+    if level in ("Moderate", "High", "Critical"):
         st.markdown(
-            f'<div class="gauge gauge-{html.escape(level)}"><h2>{colors.get(level, "⚪")} {html.escape(level)} risk</h2>'
-            '<div class="small" style="color:inherit;">Awareness indicator only. Not proof either way.</div></div>',
+            '<div class="help"><b>Already paid or shared details? Call 1930.</b>'
+            '<p>1930 is India\'s cyber fraud helpline. Call it straight away, then report at '
+            '<a href="https://cybercrime.gov.in/" target="_blank">cybercrime.gov.in</a>. Acting fast gives the best chance of stopping a payment.</p></div>',
             unsafe_allow_html=True,
         )
-        b, c = st.columns(2)
-        b.metric("Indicative risk score", f"{report['risk_score']} / 100")
-        c.metric("Message type", report["message_type"])
-        st.caption("The score is an AI-generated awareness indicator, not a probability that the message is fraudulent.")
-        st.markdown("### What Gemma noticed")
-        st.markdown(f'<div class="panel">{html.escape(report["summary"])}</div>', unsafe_allow_html=True)
 
-        st.markdown("### Warning signs & evidence")
-        if report["warning_signs"]:
-            for item in report["warning_signs"]:
-                with st.expander(item["title"], expanded=True):
-                    if item["evidence"]:
-                        st.markdown(f'<div class="quote">“{html.escape(item["evidence"])}”</div>', unsafe_allow_html=True)
-                    else:
-                        st.caption("No exact quotation was retained for this point.")
-                    st.write(item["explanation"])
-        else:
-            st.info("No specific warning signs were identified in the supplied text. This does not prove the message is safe.")
+    unsure = "".join(f"<li>{esc(u)}</li>" for u in report["uncertainty"])
+    st.markdown(f'<div class="section"><h3>What we can\'t tell</h3><ul class="unsure">{unsure}</ul></div>', unsafe_allow_html=True)
 
-        x, y = st.columns(2)
-        with x:
-            st.markdown("### Safer next steps")
-            for action in report["safe_actions"]:
-                st.markdown(f"- {action}")
-        with y:
-            st.markdown("### What remains uncertain")
-            for item in report["uncertainty"]:
-                st.markdown(f"- {item}")
+    st.download_button("Save this report", json.dumps(report, indent=2, ensure_ascii=False), "scamshield-report.json", "application/json")
 
-        st.download_button(
-            "⬇ Download report (JSON)",
-            data=json.dumps(report, indent=2, ensure_ascii=False),
-            file_name="scamshield-analysis.json",
-            mime="application/json",
-        )
 
-elif page == "Scam catalogue":
-    st.subheader("Common scam patterns")
-    st.markdown('<p class="subtle">A searchable awareness guide. These are pattern examples, not a list of verified current incidents.</p>', unsafe_allow_html=True)
+tab_check, tab_scams, tab_help = st.tabs(["Check a message", "Common scams", "Get help"])
+
+def back_to_input(clear: bool) -> None:
+    st.session_state["view"] = "input"
+    st.session_state["msg"] = "" if clear else st.session_state.get("checked", "")
+
+
+with tab_check:
+    if st.session_state.get("view") == "result" and st.session_state.get("report"):
+        # ---------- Result screen ----------
+        b1, b2, _ = st.columns([1.4, 1.2, 2])
+        b1.button("Check another message", type="primary", on_click=back_to_input, args=(True,), use_container_width=True)
+        b2.button("Edit this message", on_click=back_to_input, args=(False,), use_container_width=True)
+        render_report(st.session_state["report"], st.session_state["checked"])
+    else:
+        # ---------- Input screen ----------
+        st.markdown("# Got a message that feels off?")
+        st.markdown('<p class="lede">Paste it below. ScamShield points out what looks suspicious and what to do next. It runs on this computer, and nothing is saved.</p>', unsafe_allow_html=True)
+
+        st.caption("No message handy? Try an example:")
+        cols = st.columns(len(EXAMPLES))
+        for col, (label, text) in zip(cols, EXAMPLES.items()):
+            col.button(label, on_click=set_example, args=(text,), key=f"ex_{label}", use_container_width=True)
+
+        message = st.text_area("Message to check", key="msg", height=170, max_chars=12000,
+                               placeholder="Paste an SMS, WhatsApp message or email here…", label_visibility="collapsed")
+        go = st.button("Check this message", type="primary")
+        st.markdown('<div class="small-note">Never paste passwords, PINs or OTPs. Remove personal details first if you can.</div>', unsafe_allow_html=True)
+
+        if go:
+            if not message.strip():
+                st.warning("Paste a message first, then press Check this message.")
+            else:
+                with st.spinner("Reading the message. The first check can take a minute…"):
+                    try:
+                        st.session_state["report"] = analyze_message(message)
+                        st.session_state["checked"] = message.strip()
+                        st.session_state["view"] = "result"
+                        st.rerun()
+                    except ScamShieldError as exc:
+                        st.session_state.pop("report", None)
+                        st.error(str(exc))
+                    except Exception:
+                        st.session_state.pop("report", None)
+                        st.error("Something went wrong while checking. Try again. If it keeps happening, look at the terminal window for details.")
+
+with tab_scams:
+    st.markdown("# Common scams")
+    st.markdown('<p class="lede">Patterns that show up again and again. These are examples of how scams work, not a list of current incidents.</p>', unsafe_allow_html=True)
     catalogue = [
-        ("OTP / account takeover", "A caller or message asks for an OTP, PIN, password, or screen-sharing access.", "Never disclose authentication codes. Contact the bank or service through its official app or website."),
-        ("KYC / account suspension", "A message claims an account will be blocked unless details are updated through a link.", "Do not use the supplied link. Open the official app or type the known website address yourself."),
-        ("Parcel / delivery fee", "An unexpected delivery notice asks for a small payment or personal details to release a parcel.", "Check tracking through the courier's official website using a tracking number you already have."),
-        ("Prize / reward", "A message says you have won a prize but must pay a fee or provide sensitive information.", "Treat unexpected prizes cautiously. Do not pay to claim an unsolicited reward."),
-        ("Job / task scam", "A recruiter promises unusually high earnings for simple tasks and may later request deposits.", "Verify the employer independently. Do not pay to obtain work or withdraw supposed earnings."),
-        ("UPI collect request", "A person says you must approve a collect request or enter a UPI PIN to receive money.", "A UPI PIN is used to authorise payments, not to receive money. Decline unexpected requests."),
-        ("Impersonation / emergency", "Someone pretends to be a relative, official, or authority and demands urgent money.", "Verify using a previously known phone number and a separate communication channel."),
-        ("Investment / guaranteed returns", "A message promises guaranteed or unusually high returns with pressure to act quickly.", "Check registration and claims independently. Never transfer money based only on a message."),
+        ("OTP and account takeover", "A call or message asks for your OTP, PIN, password, or to share your screen.", "Never read out a code. Your bank will not ask for it. Contact the bank through its official app or website."),
+        ("KYC or account suspended", "A message says your account will be blocked unless you update details through a link.", "Don't use the link. Open the official app, or type the website address yourself."),
+        ("Parcel or delivery fee", "An unexpected delivery notice asks for a small payment or personal details.", "Check tracking on the courier's own website with a tracking number you already have."),
+        ("Prize or lottery", "You have won something you never entered, but must pay a fee to get it.", "Real prizes don't ask you to pay first. Ignore and delete."),
+        ("Job or task scam", "High pay for simple tasks, then a deposit is needed to continue or to withdraw earnings.", "Never pay to get work. Check the employer independently."),
+        ("UPI collect request", "Someone says you must approve a request or enter your UPI PIN to receive money.", "You only enter a UPI PIN to send money, never to receive it. Decline."),
+        ("Family or official in trouble", "Someone pretends to be a relative, police officer or official and demands money fast.", "Hang up and call back on a number you already know. Real officers don't ask for transfers on video calls."),
+        ("Guaranteed returns", "Promises of fixed high returns with pressure to join today.", "No honest investment guarantees high returns. Check registration before you send anything."),
     ]
-    query = st.text_input("Search scam patterns", placeholder="Try: OTP, parcel, job, UPI…").lower()
-    matches = [item for item in catalogue if query in " ".join(item).lower()]
-    if not matches:
-        st.info("No matching pattern. Try a broader search term.")
-    for title, pattern, action in matches:
+    q = st.text_input("Search", placeholder="Try: OTP, parcel, job, UPI", label_visibility="collapsed").lower()
+    found = [c for c in catalogue if q in " ".join(c).lower()]
+    if not found:
+        st.info("Nothing matches that search. Try a shorter word.")
+    for title, pattern, action in found:
         with st.expander(title):
-            st.write("**Typical pattern**")
-            st.write(pattern)
-            st.write("**Safer response**")
-            st.write(action)
+            st.markdown(f"**How it works.** {pattern}")
+            st.markdown(f"**What to do.** {action}")
 
-elif page == "India cyber help":
-    st.subheader("Official Indian cyber-safety resources")
-    st.markdown('<p class="subtle">Use official channels. If money has been lost to suspected cyber financial fraud, report it immediately.</p>', unsafe_allow_html=True)
-    st.markdown("""
-    <div class="panel">
-    <h3>☎️ Financial cyber fraud helpline: 1930</h3>
-    If you have transferred money or suspect financial cyber fraud, call 1930 promptly and follow the official reporting process.
-    </div>
-    """, unsafe_allow_html=True)
-    st.markdown("- **National Cyber Crime Reporting Portal:** https://cybercrime.gov.in/")
-    st.markdown("- **CERT-In:** https://www.cert-in.org.in/")
-    st.markdown("- **Cyber Swachhta Kendra:** https://www.csk.gov.in/")
-    st.info("ScamShield AI is an awareness aid, not a government service, law-enforcement tool, or substitute for official reporting.")
+with tab_help:
+    st.markdown("# Get help")
+    st.markdown('<p class="lede">If money has gone or you shared sensitive details, move quickly and use official channels.</p>', unsafe_allow_html=True)
+    st.markdown('<div class="help"><b>Call 1930</b><p>India\'s cyber financial fraud helpline. Call as soon as you notice a fraudulent payment, then follow the reporting steps.</p></div>', unsafe_allow_html=True)
+    st.markdown("")
+    st.markdown("- [National Cyber Crime Reporting Portal](https://cybercrime.gov.in/)\n- [CERT-In](https://www.cert-in.org.in/)\n- [Cyber Swachhta Kendra](https://www.csk.gov.in/)")
+    st.info("ScamShield is an awareness tool. It is not a government or police service.")
 
-st.divider()
-st.markdown("""
-<div class="small">
-<b>Responsible AI notice:</b> ScamShield AI cannot prove whether a message is fraudulent or verify the sender's identity. Results may be incomplete or incorrect. Always verify independently before taking action. This tool does not contact authorities or block messages.
-</div>
-""", unsafe_allow_html=True)
+st.markdown('<div class="fine">ScamShield cannot prove a message is a scam or that it is safe, and it cannot check who sent it. Results can be wrong. Always confirm through an official channel you find yourself. This tool does not contact anyone or block messages.</div>', unsafe_allow_html=True)
