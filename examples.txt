@@ -1,0 +1,13 @@
+FICTIONAL TEST MESSAGES — do not use real personal data.
+
+1. Reward message:
+"Congratulations! You have been selected for a special reward. Pay a processing fee using this link to claim it."
+
+2. Account warning:
+"Your account will be suspended today. Verify your details immediately using the link below."
+
+3. College announcement:
+"Reminder: The department seminar is scheduled for Friday at 10:00 AM in the main auditorium. Please bring your student ID."
+
+4. Unclear job offer:
+"Work from home and earn up to 5000 per day. Message us for details."
