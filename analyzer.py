@@ -174,6 +174,8 @@ def analyze_message(message: str) -> dict[str, Any]:
     payload = {
         "model": MODEL,
         "stream": False,
+        "think": False,
+        "keep_alive": "30m",
         "format": SCHEMA,
         "messages": [
             {"role": "system", "content": SYSTEM_PROMPT},
